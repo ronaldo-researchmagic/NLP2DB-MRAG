@@ -9,11 +9,11 @@ CFG = Config()
 prompt_templates = {
     "en": {
         # SQL Auto Execute Prompts
-        "sql_expert_role": "You are a SQL expert. Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer.",
+        "sql_expert_role": "You are a SQL expert. Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer. CRITICAL: Always preserve the exact format of table and column names including all underscores. For example, write 'ft_faturamento_cabecalho' not 'ftfaturamentocabecalho', and write 'nf_valor_faturar' not 'nfvalorfaturar'. This applies to both your SQL queries and your explanatory text.",
         "sql_limit_results": "Unless the user specifies in his question a specific number of examples he wishes to obtain, always limit your query to at most {top_k} results.",
         "sql_use_few_tables": "Use as few tables as possible when querying.",
         "sql_data_validation": "When generating insert, delete, update, or replace SQL, please make sure to use the data given by the human, and cannot use any unknown data. If you do not get enough information, speak to user: I don't have enough data complete your request.",
-        "sql_schema_attention": "Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.",
+        "sql_schema_attention": "Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table. IMPORTANT: Always preserve underscores in table and column names exactly as they appear in the schema (e.g., ft_faturamento_cabecalho, nf_valor_faturar). Never remove or replace underscores in identifiers.",
         "sql_tables_prefix": "Only use the following tables generate sql:",
         "sql_question_prefix": "Question:",
         "sql_response_format": "You must respond in JSON format as following format:",
@@ -27,11 +27,11 @@ prompt_templates = {
     },
     "pt": {
         # SQL Auto Execute Prompts
-        "sql_expert_role": "Você é um especialista em SQL. Dada uma pergunta, primeiro crie uma consulta {dialect} sintaticamente correta para executar, depois analise os resultados da consulta e retorne a resposta.",
+        "sql_expert_role": "Você é um especialista em SQL. Dada uma pergunta, primeiro crie uma consulta {dialect} sintaticamente correta para executar, depois analise os resultados da consulta e retorne a resposta. CRÍTICO: Sempre preserve o formato exato dos nomes de tabelas e colunas, incluindo todos os underscores. Por exemplo, escreva 'ft_faturamento_cabecalho' e não 'ftfaturamentocabecalho', e escreva 'nf_valor_faturar' e não 'nfvalorfaturar'. Isso se aplica tanto às suas consultas SQL quanto ao seu texto explicativo.",
         "sql_limit_results": "A menos que o usuário especifique em sua pergunta um número específico de exemplos que deseja obter, sempre limite sua consulta a no máximo {top_k} resultados.",
         "sql_use_few_tables": "Use o menor número possível de tabelas ao consultar.",
         "sql_data_validation": "Ao gerar SQL de inserção, exclusão, atualização ou substituição, certifique-se de usar os dados fornecidos pelo humano, e não pode usar dados desconhecidos. Se você não tiver informações suficientes, diga ao usuário: Não tenho dados suficientes para completar sua solicitação.",
-        "sql_schema_attention": "Preste atenção para usar apenas os nomes de colunas que você pode ver na descrição do esquema. Tenha cuidado para não consultar colunas que não existem. Além disso, preste atenção em qual coluna está em qual tabela.",
+        "sql_schema_attention": "Preste atenção para usar apenas os nomes de colunas que você pode ver na descrição do esquema. Tenha cuidado para não consultar colunas que não existem. Além disso, preste atenção em qual coluna está em qual tabela. IMPORTANTE: Sempre preserve os underscores (_) nos nomes de tabelas e colunas exatamente como aparecem no esquema (ex: ft_faturamento_cabecalho, nf_valor_faturar). Nunca remova ou substitua underscores em identificadores.",
         "sql_tables_prefix": "Use apenas as seguintes tabelas para gerar SQL:",
         "sql_question_prefix": "Pergunta:",
         "sql_response_format": "Você deve responder no formato JSON conforme o seguinte formato:",
