@@ -113,7 +113,7 @@ class BaseChat(ABC):
             
             # Generate a user-facing view message
             view_message_content = self.prompt_template.output_parser.parse_view_response(
-                parsed_response.thoughts if hasattr(parsed_response, 'thoughts') else response_text, 
+                parsed_response, 
                 final_result
             )
             self.current_message.add_view_message(view_message_content)
