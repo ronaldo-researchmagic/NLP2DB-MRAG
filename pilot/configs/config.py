@@ -2,10 +2,32 @@
 # -*- coding: utf-8 -*-
 
 import os
-from typing import List
-from auto_gpt_plugin_template import AutoGPTPluginTemplate
+from typing import List, Any
 from pilot.singleton import Singleton
 from pilot.common.sql_database import Database
+
+# Classe simples para substituir a dependência do AutoGPTPluginTemplate
+class PluginTemplate:
+    """Classe base simples para plugins"""
+    
+    def __init__(self, name: str = ""):
+        self.name = name
+        
+    def can_handle_post_prompt(self) -> bool:
+        """Este método determina se o plugin pode lidar com o prompt após o processamento"""
+        return False
+        
+    def can_handle_pre_prompt(self) -> bool:
+        """Este método determina se o plugin pode lidar com o prompt antes do processamento"""
+        return False
+        
+    def post_prompt(self, prompt: str) -> str:
+        """Este método é chamado após o processamento do prompt"""
+        return prompt
+        
+    def pre_prompt(self, prompt: str) -> str:
+        """Este método é chamado antes do processamento do prompt"""
+        return prompt
 
 class Config(metaclass=Singleton):
     """Configuration class to store the state of bools for different scripts access"""
@@ -27,16 +49,37 @@ class Config(metaclass=Singleton):
         self.temperature = float(os.getenv("TEMPERATURE", 0.15))
 
         # --- Database Connection ---
-        self.LOCAL_DB_HOST = os.getenv("LOCAL_DB_HOST", "localhost")
-        self.LOCAL_DB_PORT = int(os.getenv("LOCAL_DB_PORT", 3306))
-        self.LOCAL_DB_USER = os.getenv("LOCAL_DB_USER", "root")
-        self.LOCAL_DB_PASSWORD = os.getenv("LOCAL_DB_PASSWORD", "rootpass123")
+        self.DB_TYPE = os.getenv("DB_TYPE", "sqlite")
+        self.DB_PATH = os.getenv("DB_PATH", "data/faturamento.db")
+        self.DB_NAME = os.getenv("DB_NAME", "db_faturamento")
         
         try:
-            self.local_db = Database.from_uri(
-                f"mysql+pymysql://{self.LOCAL_DB_USER}:{self.LOCAL_DB_PASSWORD}@{self.LOCAL_DB_HOST}:{self.LOCAL_DB_PORT}",
-                engine_args={"pool_size": 10, "pool_recycle": 3600, "echo": self.debug_mode},
-            )
+            if self.DB_TYPE.lower() == "sqlite":
+                self.local_db = Database.from_uri(
+                    f"sqlite:///{self.DB_PATH}",
+                    engine_args={"echo": self.debug_mode},
+                )
+            elif self.DB_TYPE.lower() == "postgres" or self.DB_TYPE.lower() == "postgresql":
+                self.LOCAL_DB_HOST = os.getenv("LOCAL_DB_HOST", "localhost")
+                self.LOCAL_DB_PORT = int(os.getenv("LOCAL_DB_PORT", 5432))
+                self.LOCAL_DB_USER = os.getenv("LOCAL_DB_USER", "postgres")
+                self.LOCAL_DB_PASSWORD = os.getenv("LOCAL_DB_PASSWORD", "")
+                self.LOCAL_DB_DATABASE = os.getenv("LOCAL_DB_DATABASE", "postgres")
+                
+                self.local_db = Database.from_uri(
+                    f"postgresql://{self.LOCAL_DB_USER}:{self.LOCAL_DB_PASSWORD}@{self.LOCAL_DB_HOST}:{self.LOCAL_DB_PORT}/{self.LOCAL_DB_DATABASE}",
+                    engine_args={"pool_size": 10, "pool_recycle": 3600, "echo": self.debug_mode},
+                )
+            else:  # Fallback to MySQL if specified
+                self.LOCAL_DB_HOST = os.getenv("LOCAL_DB_HOST", "localhost")
+                self.LOCAL_DB_PORT = int(os.getenv("LOCAL_DB_PORT", 3306))
+                self.LOCAL_DB_USER = os.getenv("LOCAL_DB_USER", "root")
+                self.LOCAL_DB_PASSWORD = os.getenv("LOCAL_DB_PASSWORD", "rootpass123")
+                
+                self.local_db = Database.from_uri(
+                    f"mysql+pymysql://{self.LOCAL_DB_USER}:{self.LOCAL_DB_PASSWORD}@{self.LOCAL_DB_HOST}:{self.LOCAL_DB_PORT}",
+                    engine_args={"pool_size": 10, "pool_recycle": 3600, "echo": self.debug_mode},
+                )
         except Exception as e:
             print(f"Warning: Could not connect to database. DB-related features will be unavailable. Error: {e}")
             self.local_db = None
@@ -49,7 +92,7 @@ class Config(metaclass=Singleton):
 
         # --- Original Project Settings (Kept for compatibility) ---
         self.prompt_templates = {}
-        self.plugins: List[AutoGPTPluginTemplate] = []
+        self.plugins: List[PluginTemplate] = []
         self.command_registry = []
         self.message_dir = os.getenv("MESSAGE_HISTORY_DIR", "pilot/message_history")
         

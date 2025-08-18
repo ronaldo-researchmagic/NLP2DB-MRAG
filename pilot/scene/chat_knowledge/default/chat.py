@@ -1,4 +1,7 @@
-from chromadb.errors import NoIndexException
+# Definição de exceção personalizada para substituir a importação problemática
+class NoIndexException(Exception):
+    """Exceção personalizada para quando não há índice disponível."""
+    pass
 
 from pilot.scene.base_chat import BaseChat, logger
 from pilot.scene.base import ChatScene

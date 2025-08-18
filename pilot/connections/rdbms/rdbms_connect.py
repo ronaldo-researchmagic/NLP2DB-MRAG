@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+import logging
 from typing import Any, Iterable, List, Optional
 from pydantic import BaseModel, Field, root_validator, validator, Extra
 from abc import ABC, abstractmethod
@@ -17,6 +18,8 @@ from sqlalchemy.engine import CursorResult, Engine
 from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.orm import sessionmaker, scoped_session
+
+logger = logging.getLogger(__name__)
 
 from pilot.connections.base import BaseConnect
 from pilot.configs.config import Config
@@ -106,6 +109,11 @@ class RDBMSDatabase(BaseConnect):
         return cls(create_engine(database_uri, **_engine_args), **kwargs)
 
     @property
+    def engine(self):
+        """Propriedade para acessar o engine do SQLAlchemy."""
+        return self._engine
+        
+    @property
     def dialect(self) -> str:
         """Return string representation of dialect to use."""
         return self._engine.dialect.name
@@ -127,9 +135,20 @@ class RDBMSDatabase(BaseConnect):
         session = self._db_sessions()
 
         self._metadata = MetaData()
-        # sql = f"use {db_name}"
-        sql = text(f"use `{db_name}`")
-        session.execute(sql)
+        # Para SQLite, não precisamos mudar de banco de dados com 'use'
+        # Para outros bancos como MySQL, usamos o comando 'use'
+        # Para PostgreSQL, usamos SET search_path
+        if 'sqlite' in self._engine.dialect.name.lower():
+            # SQLite não precisa do comando 'use'
+            pass
+        elif 'postgresql' in self._engine.dialect.name.lower() or 'postgres' in self._engine.dialect.name.lower():
+            # Para PostgreSQL
+            sql = text(f"SET search_path TO {db_name}")
+            session.execute(sql)
+        else:
+            # Para outros bancos como MySQL
+            sql = text(f"use `{db_name}`")
+            session.execute(sql)
 
         # 处理表信息数据
 
@@ -286,11 +305,38 @@ class RDBMSDatabase(BaseConnect):
             return f"Error: {e}"
 
     def get_database_list(self):
-        session = self._db_sessions()
-        cursor = session.execute(text(" show databases;"))
-        results = cursor.fetchall()
-        return [
-            d[0]
-            for d in results
-            if d[0] not in ["information_schema", "performance_schema", "sys", "mysql"]
-        ]
+        # Para SQLite, não existe o conceito de múltiplos bancos de dados como em MySQL
+        # Para PostgreSQL, os bancos de dados são diferentes dos esquemas
+        try:
+            session = self._db_sessions()
+            # Verificar se estamos usando SQLite
+            if 'sqlite' in self._engine.dialect.name.lower():
+                # Obter o nome do arquivo do banco de dados SQLite
+                cursor = session.execute(text("PRAGMA database_list;"))
+                results = cursor.fetchall()
+                return [db[1] for db in results]  # Nome do banco (geralmente 'main' para o principal)
+            elif 'postgresql' in self._engine.dialect.name.lower() or 'postgres' in self._engine.dialect.name.lower():
+                # Para PostgreSQL, listamos os esquemas disponíveis no banco atual
+                cursor = session.execute(text("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast');"))
+                results = cursor.fetchall()
+                schemas = [d[0] for d in results]
+                # Se public estiver na lista, colocamos ele primeiro
+                if 'public' in schemas:
+                    schemas.remove('public')
+                    schemas.insert(0, 'public')
+                return schemas
+            else:
+                # Para outros bancos como MySQL
+                cursor = session.execute(text("SHOW DATABASES;"))
+                results = cursor.fetchall()
+                return [
+                    d[0]
+                    for d in results
+                    if d[0] not in ["information_schema", "performance_schema", "sys", "mysql"]
+                ]
+        except Exception as e:
+            logger.error(f"Erro ao obter lista de bancos de dados: {e}")
+            if 'postgresql' in self._engine.dialect.name.lower() or 'postgres' in self._engine.dialect.name.lower():
+                return ['public']  # Retorna 'public' como fallback para PostgreSQL
+            else:
+                return ['main']  # Retorna 'main' como fallback para outros bancos

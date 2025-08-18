@@ -2,7 +2,7 @@ from typing import List
 
 from langchain.schema import Document
 
-from pilot import SourceEmbedding, register
+from pilot.source_embedding.source_embedding import SourceEmbedding, register
 
 
 class StringEmbedding(SourceEmbedding):

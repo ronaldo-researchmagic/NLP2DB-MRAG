@@ -19,5 +19,5 @@ def main():
     logger.info("Starting DB-GPT TELA Edition with NiceGUI...")
     start_webserver()
 
-if __name__ == '__main__':
+if __name__ in {'__main__', '__mp_main__'}:
     main()

@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Any, Dict, Type
 from pilot.configs.config import Config
 from pilot.vector_store.connector import VectorStoreConnector
 from pilot.llm_providers.tela_provider import TelaEmbeddingService
 
 CFG = Config()
+
+# Dicionário para registrar implementações de embedding
+_EMBEDDING_REGISTRY: Dict[str, Type["SourceEmbedding"]] = {}
+
+def register(name: str):
+    """Decorator para registrar implementações de SourceEmbedding."""
+    def decorator(cls):
+        _EMBEDDING_REGISTRY[name] = cls
+        return cls
+    return decorator
 
 class SourceEmbedding(ABC):
     """Base class for embedding data from a source into a vector store."""

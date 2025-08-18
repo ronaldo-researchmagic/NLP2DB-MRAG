@@ -2,6 +2,7 @@ from __future__ import annotations
 import sqlparse
 import regex as re
 import warnings
+import logging
 from typing import Any, Iterable, List, Optional
 from pydantic import BaseModel, Field, root_validator, validator, Extra
 from abc import ABC, abstractmethod
@@ -19,6 +20,8 @@ from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.orm import sessionmaker, scoped_session
 
+logger = logging.getLogger(__name__)
+
 
 def _format_index(index: sqlalchemy.engine.interfaces.ReflectedIndex) -> str:
     return (
@@ -30,6 +33,12 @@ def _format_index(index: sqlalchemy.engine.interfaces.ReflectedIndex) -> str:
 class Database:
     """SQLAlchemy wrapper around a database."""
 
+
+    @property
+    def engine(self):
+        # Propriedade para acessar o engine do SQLAlchemy
+        return self._engine
+        
     def __init__(
         self,
         engine,
@@ -75,6 +84,11 @@ class Database:
         return cls(create_engine(database_uri, **_engine_args), **kwargs)
 
     @property
+    def engine(self):
+        """Propriedade para acessar o engine do SQLAlchemy."""
+        return self._engine
+        
+    @property
     def dialect(self) -> str:
         """Return string representation of dialect to use."""
         return self._engine.dialect.name
@@ -93,7 +107,11 @@ class Database:
         return self.get_usable_table_names()
 
     def get_session_db(self, connect):
-        sql = text(f"select DATABASE()")
+        # Usar função compatível com diferentes bancos de dados
+        if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+            sql = text(f"SELECT current_database()")
+        else:
+            sql = text(f"SELECT DATABASE()")
         cursor = connect.execute(sql)
         result = cursor.fetchone()[0]
         return result
@@ -102,9 +120,54 @@ class Database:
         session = self._db_sessions()
 
         self._metadata = MetaData()
-        # sql = f"use {db_name}"
-        sql = text(f"use `{db_name}`")
-        session.execute(sql)
+        
+        # Tratar caso especial para PostgreSQL quando o db_name é 'main'
+        if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+            # No PostgreSQL, 'main' não existe como esquema, usar 'public' em seu lugar
+            if db_name == 'main':
+                schema_name = 'public'
+            else:
+                schema_name = db_name
+                
+            try:
+                # Verificar se o esquema existe
+                check_schema = text("""
+                    SELECT schema_name 
+                    FROM information_schema.schemata 
+                    WHERE schema_name = :schema_name
+                """)
+                result = session.execute(check_schema, {"schema_name": schema_name}).fetchone()
+                
+                # Se o esquema não existir, usar 'public'
+                if not result:
+                    logger.warning(f"Esquema '{schema_name}' não encontrado, usando 'public'")
+                    schema_name = 'public'
+                    
+                # Definir o search_path
+                sql = text(f"SET search_path TO {schema_name}")
+                session.execute(sql)
+            except Exception as e:
+                logger.error(f"Erro ao configurar search_path: {e}")
+                # Em caso de erro, tentar usar 'public'
+                try:
+                    session.rollback()  # Importante para limpar qualquer transação com erro
+                    sql = text("SET search_path TO public")
+                    session.execute(sql)
+                except Exception as inner_e:
+                    logger.error(f"Erro ao usar esquema 'public': {inner_e}")
+        elif 'sqlite' in self._engine.name.lower():
+            # SQLite não precisa de seleção de banco de dados
+            pass
+        elif 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+            # PostgreSQL usa SET search_path em vez de USE
+            sql = text(f"SET search_path TO {db_name}")
+            session.execute(sql)
+        else:
+            # MySQL e outros
+            sql = text(f"use `{db_name}`")
+            session.execute(sql)
+            
+        return session 
 
         # 处理表信息数据
 
@@ -124,15 +187,41 @@ class Database:
         return session
 
     def get_current_db_name(self, session) -> str:
-        return session.execute(text("SELECT DATABASE()")).scalar()
+        # Usar função compatível com diferentes bancos de dados
+        if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+            return session.execute(text("SELECT current_database()")).scalar()
+        else:
+            return session.execute(text("SELECT DATABASE()")).scalar()
 
     def table_simple_info(self, session):
-        _sql = f"""
-                select concat(table_name, "(" , group_concat(column_name), ")") as schema_info from information_schema.COLUMNS where table_schema="{self.get_current_db_name(session)}" group by TABLE_NAME;
-            """
-        cursor = session.execute(text(_sql))
-        results = cursor.fetchall()
-        return results
+        # Usar consulta compatível com diferentes bancos de dados
+        try:
+            if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+                # No PostgreSQL, precisamos usar o esquema atual (search_path)
+                # Para PostgreSQL, usamos 'public' como esquema padrão
+                _sql = f"""
+                    SELECT table_name, '(' || string_agg(column_name, ',') || ')' as columns
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'public' 
+                    GROUP BY table_name;
+                """
+            else:
+                _sql = f"""
+                    SELECT table_name, concat("(" , group_concat(column_name), ")") as columns
+                    FROM information_schema.COLUMNS 
+                    WHERE table_schema="{self.get_current_db_name(session)}" 
+                    GROUP BY TABLE_NAME;
+                """
+            cursor = session.execute(text(_sql))
+            results = cursor.fetchall()
+            
+            # Formatar os resultados como tuplas (table_name, columns)
+            formatted_results = [(row[0], row[1]) for row in results]
+            return formatted_results
+        except Exception as e:
+            print(f"Error in table_simple_info: {e}")
+            # Retornar uma lista vazia em caso de erro
+            return []
 
     @property
     def table_info(self) -> str:
@@ -236,7 +325,14 @@ class Database:
         result = session.execute(text(write_sql))
         session.commit()
         # TODO  Subsequent optimization of dynamically specified database submission loss target problem
-        session.execute(text(f"use `{db_cache}`"))
+        # Para SQLite, não precisamos mudar de banco de dados com 'use'
+        if 'sqlite' not in self._engine.name.lower():
+            if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+                # PostgreSQL usa SET search_path em vez de USE
+                session.execute(text(f"SET search_path TO {db_cache}"))
+            else:
+                # MySQL e outros
+                session.execute(text(f"use `{db_cache}`"))
         print(f"SQL[{write_sql}], result:{result.rowcount}")
         return result.rowcount
 
@@ -273,6 +369,23 @@ class Database:
         print("SQL:" + command)
         if not command:
             return []
+            
+        # Verificar se o comando é 'use' e tratar de acordo com o tipo de banco de dados
+        import re
+        use_match = re.match(r"^\s*use\s+[`'\"]?([^`'\"]+)[`'\"]?\s*;?\s*$", command, re.IGNORECASE)
+        
+        if use_match:
+            db_name = use_match.group(1)
+            # Tratar o comando 'use' de acordo com o tipo de banco de dados
+            if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+                # Para PostgreSQL, usar SET search_path
+                command = f"SET search_path TO {db_name}"
+                print(f"Convertendo 'use {db_name}' para 'SET search_path TO {db_name}' para PostgreSQL")
+            elif 'sqlite' in self._engine.name.lower():
+                # SQLite não precisa do comando 'use'
+                print(f"Ignorando comando 'use {db_name}' para SQLite")
+                return []
+        
         parsed, ttype, sql_type = self.__sql_parse(command)
         if ttype == sqlparse.tokens.DML:
             if sql_type == "SELECT":
@@ -313,14 +426,44 @@ class Database:
             return f"Error: {e}"
 
     def get_database_list(self):
-        session = self._db_sessions()
-        cursor = session.execute(text(" show databases;"))
-        results = cursor.fetchall()
-        return [
-            d[0]
-            for d in results
-            if d[0] not in ["information_schema", "performance_schema", "sys", "mysql"]
-        ]
+        # Retorna a lista de bancos de dados (MySQL) ou esquemas (PostgreSQL)
+        try:
+            session = self._db_sessions()
+            # Verificar o tipo de banco de dados
+            if 'sqlite' in self._engine.name.lower():
+                # Para SQLite, obter o nome do arquivo do banco de dados
+                cursor = session.execute(text("PRAGMA database_list;"))
+                results = cursor.fetchall()
+                return [db[1] for db in results]  # Nome do banco (geralmente 'main' para o principal)
+            elif 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+                # Para PostgreSQL, listar esquemas disponíveis
+                cursor = session.execute(text("""
+                    SELECT schema_name 
+                    FROM information_schema.schemata 
+                    WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+                """))
+                results = cursor.fetchall()
+                schemas = [d[0] for d in results]
+                # Se não houver esquemas personalizados, usar 'public' como padrão
+                if not schemas:
+                    return ['public']
+                return schemas
+            else:
+                # Para MySQL e outros
+                cursor = session.execute(text("SHOW DATABASES;"))
+                results = cursor.fetchall()
+                return [
+                    d[0]
+                    for d in results
+                    if d[0] not in ["information_schema", "performance_schema", "sys", "mysql"]
+                ]
+        except Exception as e:
+            logger.error(f"Erro ao obter lista de bancos de dados: {e}")
+            # Retorna um valor padrão dependendo do tipo de banco
+            if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+                return ['public']  # Esquema padrão para PostgreSQL
+            else:
+                return ['main']  # Fallback para outros bancos
 
     def convert_sql_write_to_select(self, write_sql):
         """
@@ -431,6 +574,55 @@ class Database:
         cursor = session.execute(text(f"SHOW GRANTS"))
         grants = cursor.fetchall()
         return grants
+        
+    def run_sql(self, sql_query, db_name="main"):
+        """Execute uma consulta SQL e retorna o resultado.
+        
+        Args:
+            sql_query (str): Consulta SQL a ser executada
+            db_name (str): Nome do banco de dados/esquema a ser usado
+            
+        Returns:
+            list: Resultado da consulta
+        """
+        try:
+            session = self._db_sessions()
+            
+            # Configurar o esquema/banco de dados antes de executar a consulta
+            if 'sqlite' in self._engine.name.lower():
+                # SQLite não precisa de seleção de banco de dados
+                pass
+            elif 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
+                # PostgreSQL usa SET search_path em vez de USE
+                try:
+                    session.execute(text(f"SET search_path TO {db_name}"))
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Erro ao definir search_path para {db_name}: {e}")
+                    # Em caso de erro, tentar usar 'public'
+                    session.rollback()  # Limpar transação com erro
+                    session.execute(text("SET search_path TO public"))
+            else:
+                # MySQL e outros
+                try:
+                    session.execute(text(f"use `{db_name}`"))
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Erro ao usar banco de dados {db_name}: {e}")
+            
+            # Executar a consulta
+            cursor = session.execute(text(sql_query))
+            if cursor.returns_rows:
+                result = cursor.fetchall()
+                return result
+            else:
+                session.commit()
+                return None
+        except Exception as e:
+            import logging
+            logging.error(f"Erro ao executar consulta SQL: {e}")
+            session.rollback()
+            raise
 
     def get_users(self):
         """Get user info."""

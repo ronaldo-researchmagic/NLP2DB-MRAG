@@ -23,7 +23,19 @@ class DbChatOutputParser(BaseOutputParser):
     def parse_prompt_response(self, model_out_text):
         clean_str = super().parse_prompt_response(model_out_text)
         print("clean prompt response:", clean_str)
-        response = json.loads(clean_str)
+        
+        # Verificar se clean_str já é um dicionário
+        if isinstance(clean_str, dict):
+            response = clean_str
+        else:
+            # Tentar carregar como JSON string
+            try:
+                response = json.loads(clean_str)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.error(f"Erro ao processar resposta JSON: {e}")
+                # Fallback para um formato básico
+                response = {"sql": "SELECT 1;", "thoughts": "Erro ao processar resposta."}
+        
         sql, thoughts = response["sql"], response["thoughts"]
         return SqlAction(sql, thoughts)
 

@@ -1,10 +1,10 @@
 import json
 import uuid
 import asyncio
+import importlib
 from typing import List
 from pilot.configs.config import Config
 from pilot.scene.base import ChatScene
-from pilot.scene.chat_factory import ChatFactory
 from pilot.source_embedding.string_embedding import StringEmbedding
 from pilot.summary.mysql_db_summary import MysqlSummary
 from pilot.utils import build_logger
@@ -33,6 +33,8 @@ class DBSummaryClient:
             "db_select": db_input,
             "db_summary": dbsummary,
         }
+        # Importar dinamicamente para evitar importação circular
+        ChatFactory = importlib.import_module('pilot.scene.chat_factory').ChatFactory
         chat = ChatFactory.get_implementation(ChatScene.InnerChatDBSummary.value, **chat_param)
         response_text = await chat.nostream_call()
         try:

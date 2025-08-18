@@ -11,6 +11,7 @@ from pilot.scene.chat_factory import ChatFactory
 from pilot.scene.base import ChatScene
 from pilot.language.translation_handler import get_lang_text
 from pilot.utils import build_logger
+from pilot.initialize import initialize_app
 
 # --- Setup ---
 CFG = Config()
@@ -159,6 +160,11 @@ async def main_page(client: Client):
 
 def main():
     """Configures and runs the NiceGUI application."""
+    # Inicializar a aplicação (carregar templates de prompt)
+    logger.info("Initializing application and loading prompt templates...")
+    initialize_app()
+    logger.info("Prompt templates loaded successfully")
+    
     ui.run(
         title="DB-GPT TELA Edition",
         host="0.0.0.0",
