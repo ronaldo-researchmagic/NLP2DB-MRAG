@@ -10,13 +10,28 @@ The application currently supports the following languages:
 - Portuguese (pt)
 - Chinese (zh)
 
-## Configuration
+## Switching Languages
 
-Language selection is controlled by the `LANGUAGE` environment variable. You can set this in your `.env` file:
+There are two ways to change the application language:
+
+### 1. Using the UI Language Selector
+
+The application includes a language selector in the left drawer menu:
+
+1. Open the application in your browser
+2. Look for the "Language / Idioma" dropdown in the left sidebar
+3. Select your preferred language (English, Português, or 中文)
+4. The page will refresh and display all content in the selected language
+
+### 2. Using Environment Variables
+
+Language selection can also be controlled by the `LANGUAGE` environment variable. You can set this in your `.env` file:
 
 ```
 LANGUAGE=pt  # Options: en, pt, zh
 ```
+
+This method is useful for server deployments or when you want to set a default language.
 
 ## How Language Support Works
 

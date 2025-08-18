@@ -11,6 +11,11 @@ from pilot.scene.chat_factory import ChatFactory
 from pilot.scene.base import ChatScene
 from pilot.language.translation_handler import get_lang_text
 from pilot.utils import build_logger
+import sys
+
+# Set console encoding to UTF-8
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
 from pilot.initialize import initialize_app
 
 # --- Setup ---
@@ -20,6 +25,26 @@ CHAT_FACTORY = ChatFactory()
 
 # --- UI State & Session Management ---
 sessions: Dict[str, Dict[str, Any]] = {}
+
+# Store the current language in a global variable that can be modified
+current_language = CFG.LANGUAGE
+
+def change_language(language: str):
+    """Change the application language and refresh the UI."""
+    global current_language
+    # Update the global language variable
+    current_language = language
+    # Update the config language (this won't persist after restart)
+    CFG.LANGUAGE = language
+    # Show notification to the user
+    language_names = {
+        'en': 'English',
+        'pt': 'Português',
+       
+    }
+    ui.notify(f"Language changed to {language_names.get(language, language)}", type='positive')
+    # Refresh the page to apply changes
+    ui.open('/', new_tab=False)
 
 def get_session():
     """Get or create a user session."""
@@ -57,8 +82,27 @@ def build_left_drawer(dbs):
         ui.label('Controls').classes('text-xl font-semibold mb-4')
         
         with ui.card().classes('w-full'):
-            ui.label('Database').classes('text-lg font-medium')
+            ui.label('Language / Idioma').classes('text-lg font-medium')
             session = get_session()
+            # Create a simple dictionary mapping for display labels
+            language_labels = {
+                'en': 'English',
+                'pt': 'Português',
+                'zh': '中文'
+            }
+            
+            # Create simple list of language codes
+            language_options = ['en', 'pt', 'zh']
+            
+            # Use the language code directly as the value
+            session['language_selector'] = ui.select(
+                options={code: language_labels[code] for code in language_options},
+                value=current_language if current_language in language_options else 'en',
+                on_change=lambda e: change_language(e.value)
+            ).classes('w-full')
+        
+        with ui.card().classes('w-full mt-4'):
+            ui.label('Database').classes('text-lg font-medium')
             session['db_selector'] = ui.select(
                 dbs, 
                 label='Select Database', 
@@ -161,8 +205,7 @@ async def main_page(client: Client):
             "pt": "Olá! Sou seu assistente SQL com tecnologia TELA. Como posso ajudá-lo hoje?",
             "zh": "您好！我是您的TELA驱动的SQL助手。今天我能为您做些什么？"
         }
-        language = CFG.LANGUAGE
-        welcome_message = welcome_messages.get(language, welcome_messages["en"])
+        welcome_message = welcome_messages.get(current_language, welcome_messages["en"])
         ui.chat_message(welcome_message, name='Assistant')
 
 def main():
