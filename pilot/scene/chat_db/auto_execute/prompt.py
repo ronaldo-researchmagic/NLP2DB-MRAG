@@ -36,15 +36,15 @@ PROMPT_RESPONSE = f"""{get_prompt_template("sql_response_format")}
 
 RESPONSE_FORMAT = {
     "thoughts": {
-        "reasoning": get_prompt_template("sql_thoughts_reasoning") + " IMPORTANT: Always preserve underscores in table and column names (e.g., ft_faturamento_cabecalho, nf_valor_faturar).",
-        "speak": get_prompt_template("sql_thoughts_speak") + " IMPORTANT: Always preserve underscores in table and column names (e.g., ft_faturamento_cabecalho, nf_valor_faturar).",
+        "reasoning": get_prompt_template("sql_thoughts_reasoning") ,
+        "speak": get_prompt_template("sql_thoughts_speak") ,
     },
-    "sql": get_prompt_template("sql_query_to_run") + " IMPORTANT: Always preserve underscores in table and column names (e.g., ft_faturamento_cabecalho, nf_valor_faturar).",
+    "sql": get_prompt_template("sql_query_to_run") ,
 }
 
 RESPONSE_FORMAT_SIMPLE = {
-    "thoughts": get_prompt_template("sql_thoughts_speak") + " IMPORTANT: Always preserve underscores in table and column names (e.g., ft_faturamento_cabecalho, nf_valor_faturar).",
-    "sql": get_prompt_template("sql_query_to_run") + " IMPORTANT: Always preserve underscores in table and column names (e.g., ft_faturamento_cabecalho, nf_valor_faturar).",
+    "thoughts": get_prompt_template("sql_thoughts_speak"),
+    "sql": get_prompt_template("sql_query_to_run") ,
 }
 
 PROMPT_SEP = SeparatorStyle.SINGLE.value
