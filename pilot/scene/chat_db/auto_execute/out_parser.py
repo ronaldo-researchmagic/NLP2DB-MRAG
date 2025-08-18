@@ -6,6 +6,10 @@ import pandas as pd
 from pilot.utils import build_logger
 from pilot.out_parser.base import BaseOutputParser, T
 from pilot.configs.model_config import LOGDIR
+from pilot.language.translation_handler import get_lang_text
+from pilot.configs.config import Config
+
+CFG = Config()
 
 
 class SqlAction(NamedTuple):
@@ -68,8 +72,9 @@ class DbChatOutputParser(BaseOutputParser):
         html_table = df.to_html(index=False, escape=False)
         html = f"<html><head>{table_style}</head><body>{html_table}</body></html>"
         
-        # Include SQL query in the response with better formatting
-        sql_section = f"<div class='sql-query'><strong>Consulta SQL utilizada:</strong><br>{sql_query}</div>"
+        # Include SQL query in the response with better formatting using language system
+        sql_label = get_lang_text("sql_query_used")
+        sql_section = f"<div class='sql-query'><strong>{sql_label}</strong><br>{sql_query}</div>"
         
         view_text = f"##### {thoughts_text}" + "\n" + sql_section + "\n" + html.replace("\n", " ")
         return view_text

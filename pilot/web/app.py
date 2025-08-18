@@ -156,7 +156,14 @@ async def main_page(client: Client):
             ).props('round dense flat')
 
     with chat_container:
-        ui.chat_message("Hello! I'm your TELA-powered SQL assistant. How can I help you today?", name='Assistant')
+        welcome_messages = {
+            "en": "Hello! I'm your TELA-powered SQL assistant. How can I help you today?",
+            "pt": "Olá! Sou seu assistente SQL com tecnologia TELA. Como posso ajudá-lo hoje?",
+            "zh": "您好！我是您的TELA驱动的SQL助手。今天我能为您做些什么？"
+        }
+        language = CFG.LANGUAGE
+        welcome_message = welcome_messages.get(language, welcome_messages["en"])
+        ui.chat_message(welcome_message, name='Assistant')
 
 def main():
     """Configures and runs the NiceGUI application."""

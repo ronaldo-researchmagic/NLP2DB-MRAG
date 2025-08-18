@@ -5,45 +5,46 @@ from pilot.configs.config import Config
 from pilot.scene.base import ChatScene
 from pilot.scene.chat_db.auto_execute.out_parser import DbChatOutputParser, SqlAction
 from pilot.common.schema import SeparatorStyle
+from pilot.language.prompt_language import get_prompt_template
 
 CFG = Config()
 
-PROMPT_SCENE_DEFINE = """You are an AI designed to answer human questions, please follow the prompts and conventions of the system's input for your answers"""
+PROMPT_SCENE_DEFINE = get_prompt_template("scene_define")
 
 
-_DEFAULT_TEMPLATE = """
-You are a SQL expert. Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer.
-Unless the user specifies in his question a specific number of examples he wishes to obtain, always limit your query to at most {top_k} results. 
-Use as few tables as possible when querying.
-When generating  insert, delete, update, or replace SQL, please make sure to use the data given by the human, and cannot use any unknown data. If you do not get enough information, speak to  user: I don’t have enough data complete your request.
-Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
-
-"""
-
-PROMPT_SUFFIX = """Only use the following tables generate sql:
-{table_info}
-
-Question: {input}
+_DEFAULT_TEMPLATE = f"""
+{get_prompt_template("sql_expert_role")}
+{get_prompt_template("sql_limit_results")}
+{get_prompt_template("sql_use_few_tables")}
+{get_prompt_template("sql_data_validation")}
+{get_prompt_template("sql_schema_attention")}
 
 """
 
-PROMPT_RESPONSE = """You must respond in JSON format as following format:
-{response}
+PROMPT_SUFFIX = f"""{get_prompt_template("sql_tables_prefix")}
+{{table_info}}
 
-Ensure the response is correct json and can be parsed by Python json.loads
+{get_prompt_template("sql_question_prefix")} {{input}}
+
+"""
+
+PROMPT_RESPONSE = f"""{get_prompt_template("sql_response_format")}
+{{response}}
+
+{get_prompt_template("sql_json_parsing")}
 """
 
 RESPONSE_FORMAT = {
     "thoughts": {
-        "reasoning": "reasoning",
-        "speak": "thoughts summary to say to user",
+        "reasoning": get_prompt_template("sql_thoughts_reasoning"),
+        "speak": get_prompt_template("sql_thoughts_speak"),
     },
-    "sql": "SQL Query to run",
+    "sql": get_prompt_template("sql_query_to_run"),
 }
 
 RESPONSE_FORMAT_SIMPLE = {
-    "thoughts": "thoughts summary to say to user",
-    "sql": "SQL Query to run",
+    "thoughts": get_prompt_template("sql_thoughts_speak"),
+    "sql": get_prompt_template("sql_query_to_run"),
 }
 
 PROMPT_SEP = SeparatorStyle.SINGLE.value
