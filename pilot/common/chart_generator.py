@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import json
 from typing import Dict, List, Optional, Tuple, Union
 import re
+from pilot.language.translation_handler import get_lang_text
 
 class ChartGenerator:
     """
@@ -135,7 +136,7 @@ class ChartGenerator:
                     x=x_col, 
                     y=y_col,
                     color=color_col if color_col else None,
-                    title=f"{y_col} by {x_col}",
+                    title=f"{y_col} {get_lang_text('chart_by')} {x_col}",
                     template="plotly_white"
                 )
                 fig.update_layout(
@@ -149,7 +150,7 @@ class ChartGenerator:
                     df,
                     names=x_col,
                     values=y_col,
-                    title=f"Distribution of {y_col} by {x_col}",
+                    title=f"{get_lang_text('chart_distribution')} {y_col} {get_lang_text('chart_by')} {x_col}",
                     template="plotly_white"
                 )
                 
@@ -159,7 +160,7 @@ class ChartGenerator:
                     x=x_col,
                     y=y_col,
                     color=color_col if color_col else None,
-                    title=f"{y_col} Over {x_col}",
+                    title=f"{y_col} {get_lang_text('chart_over')} {x_col}",
                     template="plotly_white",
                     markers=True
                 )
@@ -175,7 +176,7 @@ class ChartGenerator:
                     x=x_col,
                     y=y_col,
                     color=color_col if color_col else None,
-                    title=f"{y_col} vs {x_col}",
+                    title=f"{y_col} {get_lang_text('chart_vs')} {x_col}",
                     template="plotly_white"
                 )
                 fig.update_layout(

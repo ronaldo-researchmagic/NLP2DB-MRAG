@@ -38,6 +38,11 @@ lang_dicts = {
         "regenerate": "Regenerar",
         "clear_box": "Limpar",
         "sql_query_used": "Consulta SQL utilizada:",
+        "chart_by": "por",
+        "chart_distribution": "Distribuição de",
+        "chart_over": "ao longo do",
+        "chart_vs": "versus",
+        "ask_database_placeholder": "Faça uma pergunta ao seu banco de dados...",
     },
     "zh": {
         "unique_id": "中文内容",
@@ -76,6 +81,11 @@ lang_dicts = {
         "regenerate": "重新生成",
         "clear_box": "清理",
         "sql_query_used": "使用的SQL查询:",
+        "chart_by": "按",
+        "chart_distribution": "分布",
+        "chart_over": "随时间",
+        "chart_vs": "对比",
+        "ask_database_placeholder": "请向您的数据库提问...",
     },
     "en": {
         "unique_id": "English Content",
@@ -114,6 +124,11 @@ lang_dicts = {
         "regenerate": "Regenerate",
         "clear_box": "Clear",
         "sql_query_used": "SQL Query Used:",
+        "chart_by": "by",
+        "chart_distribution": "Distribution of",
+        "chart_over": "Over",
+        "chart_vs": "vs",
+        "ask_database_placeholder": "Ask your database a question...",
     },
 }
 
