@@ -1,13 +1,14 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import Dict, NamedTuple
+from typing import Dict, NamedTuple, Optional
 import pandas as pd
 from pilot.utils import build_logger
 from pilot.out_parser.base import BaseOutputParser, T
 from pilot.configs.model_config import LOGDIR
 from pilot.language.translation_handler import get_lang_text
 from pilot.configs.config import Config
+from pilot.common.chart_generator import ChartGenerator
 
 CFG = Config()
 
@@ -64,9 +65,22 @@ class DbChatOutputParser(BaseOutputParser):
             data.insert(0, ["result"])
         df = pd.DataFrame(data[1:], columns=data[0])
         
+        # Generate chart if possible
+        chart_json = None
+        if len(df) > 0 and len(df.columns) > 1:
+            print(f"DEBUG: Attempting to generate chart for query: {sql_query}")
+            chart_result = ChartGenerator.generate_chart(df, sql_query=sql_query)
+            if chart_result:
+                chart_json = chart_result['figure']
+                chart_type = chart_result['chart_type']
+                print(f"DEBUG: Chart generated successfully with type: {chart_type}")
+            else:
+                print("DEBUG: Chart generation returned None")
+        
         table_style = """<style> 
             table{border-collapse:collapse;width:100%;height:80%;margin:0 auto;float:center;border: 1px solid #007bff; background-color:#333; color:#fff}th,td{border:1px solid #ddd;padding:3px;text-align:center}th{background-color:#C9C3C7;color: #fff;font-weight: bold;}tr:nth-child(even){background-color:#444}tr:hover{background-color:#444}
             .sql-query{background-color:#2a2a2a;color:#fff;padding:10px;border-radius:5px;margin:10px 0;font-family:monospace;white-space:pre-wrap;}
+            .chart-container{margin:20px 0;}
          </style>"""
         
         html_table = df.to_html(index=False, escape=False)
@@ -76,7 +90,18 @@ class DbChatOutputParser(BaseOutputParser):
         sql_label = get_lang_text("sql_query_used")
         sql_section = f"<div class='sql-query'><strong>{sql_label}</strong><br>{sql_query}</div>"
         
-        view_text = f"##### {thoughts_text}" + "\n" + sql_section + "\n" + html.replace("\n", " ")
+        # Add chart data as a hidden div with JSON data that will be processed by the frontend
+        chart_div = ""
+        if chart_json:
+            # Escape single quotes in JSON to prevent HTML attribute issues
+            import html as html_module
+            safe_chart_json = html_module.escape(chart_json)
+            print(f"DEBUG: Adding chart div with JSON data (length: {len(safe_chart_json)})")
+            chart_div = f"<div id='chart-data' style='display:none;' data-chart='{safe_chart_json}'></div>"
+        
+        # Combine all elements into the final view text
+        html_content = html.replace("\n", " ")
+        view_text = f"##### {thoughts_text}" + "\n" + sql_section + "\n" + chart_div + "\n" + html_content
         return view_text
 
     @property

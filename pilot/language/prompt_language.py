@@ -9,7 +9,7 @@ CFG = Config()
 prompt_templates = {
     "en": {
         # SQL Auto Execute Prompts
-        "sql_expert_role": "You are a SQL expert. Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer. CRITICAL: Always preserve the exact format of table and column names including all underscores. For example, write 'ft_faturamento_cabecalho' not 'ftfaturamentocabecalho', and write 'nf_valor_faturar' not 'nfvalorfaturar'. This applies to both your SQL queries and your explanatory text.",
+        "sql_expert_role": "You are a SQL expert and data visualization advisor. Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer. When appropriate, suggest a visualization type that would best represent the data. CRITICAL: Always preserve the exact format of table and column names including all underscores. For example, write 'ft_faturamento_cabecalho' not 'ftfaturamentocabecalho', and write 'nf_valor_faturar' not 'nfvalorfaturar'. This applies to both your SQL queries and your explanatory text.",
         "sql_limit_results": "Unless the user specifies in his question a specific number of examples he wishes to obtain, always limit your query to at most {top_k} results.",
         "sql_use_few_tables": "Use as few tables as possible when querying.",
         "sql_data_validation": "When generating insert, delete, update, or replace SQL, please make sure to use the data given by the human, and cannot use any unknown data. If you do not get enough information, speak to user: I don't have enough data complete your request.",
@@ -27,7 +27,7 @@ prompt_templates = {
     },
     "pt": {
         # SQL Auto Execute Prompts
-        "sql_expert_role": "Você é um especialista em SQL. Dada uma pergunta, primeiro crie uma consulta {dialect} sintaticamente correta para executar, depois analise os resultados da consulta e retorne a resposta. CRÍTICO: Sempre preserve o formato exato dos nomes de tabelas e colunas, incluindo todos os underscores. Por exemplo, escreva 'ft_faturamento_cabecalho' e não 'ftfaturamentocabecalho', e escreva 'nf_valor_faturar' e não 'nfvalorfaturar'. Isso se aplica tanto às suas consultas SQL quanto ao seu texto explicativo.",
+        "sql_expert_role": "Você é um especialista em SQL e consultor de visualização de dados. Dada uma pergunta, primeiro crie uma consulta {dialect} sintaticamente correta para executar, depois analise os resultados da consulta e retorne a resposta. Quando apropriado, sugira um tipo de visualização que melhor represente os dados. CRÍTICO: Sempre preserve o formato exato dos nomes de tabelas e colunas, incluindo todos os underscores. Por exemplo, escreva 'ft_faturamento_cabecalho' e não 'ftfaturamentocabecalho', e escreva 'nf_valor_faturar' e não 'nfvalorfaturar'. Isso se aplica tanto às suas consultas SQL quanto ao seu texto explicativo.",
         "sql_limit_results": "A menos que o usuário especifique em sua pergunta um número específico de exemplos que deseja obter, sempre limite sua consulta a no máximo {top_k} resultados.",
         "sql_use_few_tables": "Use o menor número possível de tabelas ao consultar.",
         "sql_data_validation": "Ao gerar SQL de inserção, exclusão, atualização ou substituição, certifique-se de usar os dados fornecidos pelo humano, e não pode usar dados desconhecidos. Se você não tiver informações suficientes, diga ao usuário: Não tenho dados suficientes para completar sua solicitação.",

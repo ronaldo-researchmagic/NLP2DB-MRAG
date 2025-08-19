@@ -2,9 +2,11 @@
 import asyncio
 import uuid
 import traceback
+import json
 from typing import Dict, Any, List
 
 from nicegui import app, ui, Client
+import plotly.graph_objects as go
 
 from pilot.configs.config import Config
 from pilot.scene.chat_factory import ChatFactory
@@ -162,15 +164,34 @@ async def handle_user_message(text_input: ui.textarea, chat_container: ui.column
             final_response = await chat.nostream_call()
             spinner.delete()
             with response_message:
-                ui.markdown(final_response)
+                # Process the response to extract chart data if present
+                chart_data = extract_chart_data(final_response)
+                if chart_data:
+                    # Remove the chart data div from the response
+                    final_response = remove_chart_data_div(final_response)
+                    ui.markdown(final_response)
+                    # Display the chart
+                    display_chart(chart_data)
+                else:
+                    ui.markdown(final_response)
         else:
             # Streaming response
             full_response = ""
             async for chunk in chat.stream_call():
                 full_response += chunk
                 spinner.delete()
-                with response_message:
-                    ui.markdown(full_response)
+                # Process the response to extract chart data if present
+                chart_data = extract_chart_data(full_response)
+                if chart_data:
+                    # Remove the chart data div from the response
+                    clean_response = remove_chart_data_div(full_response)
+                    with response_message:
+                        ui.markdown(clean_response)
+                        # Display the chart
+                        display_chart(chart_data)
+                else:
+                    with response_message:
+                        ui.markdown(full_response)
 
     except Exception as e:
         logger.error(f"Error handling message: {traceback.format_exc()}")
@@ -207,6 +228,57 @@ async def main_page(client: Client):
         }
         welcome_message = welcome_messages.get(current_language, welcome_messages["en"])
         ui.chat_message(welcome_message, name='Assistant')
+
+def extract_chart_data(response: str) -> Dict:
+    """Extract chart data from the response if present."""
+    import re
+    import html
+    
+    # Debug the response content
+    logger.info(f"Checking response for chart data, length: {len(response)}")
+    
+    # Look for the chart data div
+    chart_match = re.search(r"<div id='chart-data'.*?data-chart='(.*?)'></div>", response)
+    if chart_match:
+        try:
+            # Extract and unescape the chart JSON
+            chart_json = chart_match.group(1)
+            logger.info(f"Found chart data, length: {len(chart_json)}")
+            
+            # Unescape HTML entities
+            unescaped_json = html.unescape(chart_json)
+            
+            # Parse the JSON
+            chart_data = json.loads(unescaped_json)
+            logger.info("Successfully parsed chart JSON")
+            return chart_data
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding chart JSON: {e}")
+            # Log a sample of the problematic JSON for debugging
+            sample = chart_json[:100] + '...' if len(chart_json) > 100 else chart_json
+            logger.error(f"JSON sample: {sample}")
+    else:
+        logger.info("No chart data found in response")
+    return None
+
+def remove_chart_data_div(response: str) -> str:
+    """Remove the chart data div from the response."""
+    import re
+    return re.sub(r"<div id='chart-data'.*?</div>", "", response)
+
+def display_chart(chart_data: Dict):
+    """Display a Plotly chart from the provided chart data."""
+    try:
+        # Create a card for the chart
+        with ui.card().classes('w-full chart-container'):
+            ui.label("Chart Visualization").classes('text-lg font-medium')
+            # Create a Plotly figure from the JSON data
+            fig = go.Figure(**chart_data)
+            # Display the figure
+            ui.plotly(fig).classes('w-full h-64')
+    except Exception as e:
+        logger.error(f"Error displaying chart: {e}")
+        ui.label(f"Error displaying chart: {str(e)}").classes('text-red-500')
 
 def main():
     """Configures and runs the NiceGUI application."""
