@@ -149,4 +149,4 @@ logswebserver.log.*
 .plugin_env
 
 /data
-/.nicegui
+.nicegui
