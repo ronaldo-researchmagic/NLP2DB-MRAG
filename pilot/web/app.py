@@ -111,12 +111,12 @@ def build_left_drawer(dbs):
                 value=dbs[0] if dbs else None
             ).classes('w-full')
 
-        with ui.card().classes('w-full mt-4'):
-            ui.label('SQL Mode').classes('text-lg font-medium')
-            session['sql_mode'] = ui.radio(
-                [get_lang_text("sql_generate_mode_direct"), get_lang_text("sql_generate_mode_none")],
-                value=get_lang_text("sql_generate_mode_direct")
-            ).props('dense')
+        # with ui.card().classes('w-full mt-4'):
+        #     ui.label('SQL Mode').classes('text-lg font-medium')
+        #     session['sql_mode'] = ui.radio(
+        #         [get_lang_text("sql_generate_mode_direct"), get_lang_text("sql_generate_mode_none")],
+        #         value=get_lang_text("sql_generate_mode_direct")
+        #     ).props('dense')
 
         with ui.card().classes('w-full mt-4'):
             ui.label('Parameters').classes('text-lg font-medium')
