@@ -133,7 +133,7 @@ def build_left_drawer(dbs):
     return left_drawer
 
 # --- Core Application Logic ---
-async def handle_user_message(text_input: ui.textarea, chat_container: ui.column):
+async def handle_user_message(text_input: ui.input, chat_container: ui.column):
     session = get_session()
     user_message = text_input.value
     text_input.value = ''
@@ -215,24 +215,27 @@ async def main_page(client: Client):
         # Área de chat com scroll
         chat_container = ui.column().classes('w-full flex-grow overflow-y-auto p-4')
         
-        # Função para processar o envio da mensagem
-        def send_message():
-            if text_input.value.strip():  # Só envia se tiver texto
-                asyncio.create_task(handle_user_message(text_input, chat_container))
-        
-        # Área de input fixada na parte inferior
-        with ui.row().classes('w-full items-center p-2 bg-white sticky bottom-0 shadow-lg'):
-            # Cria um campo de input
+        # Input container that will remain fixed at the bottom
+        with ui.row().classes('w-full items-center p-2 bg-white sticky bottom-0 shadow-lg') as input_row:
+            # Create the input field
             text_input = ui.input(placeholder=get_lang_text('ask_database_placeholder')).classes('flex-grow')
             
-            # Adiciona evento de tecla usando JavaScript diretamente
+            # Function to process message sending
+            def send_message():
+                if text_input.value.strip():  # Only send if there's text
+                    # Create a copy of the message to avoid race conditions
+                    message = text_input.value
+                    # Process the message asynchronously
+                    asyncio.create_task(handle_user_message(text_input, chat_container))
+            
+            # Add keyboard event handler for Enter key
             ui.add_body_html("""
             <script>
             document.addEventListener('keydown', function(event) {
                 const activeElement = document.activeElement;
-                // Verifica se o elemento ativo é um input e se a tecla é Enter
+                // Check if active element is an input and key is Enter
                 if (activeElement.tagName === 'INPUT' && event.key === 'Enter') {
-                    // Aciona o botão de envio
+                    // Trigger send button
                     const sendButton = document.querySelector('button[title="send"]');
                     if (sendButton) {
                         sendButton.click();
@@ -243,9 +246,10 @@ async def main_page(client: Client):
             </script>
             """)
             
+            # Create send button
             send_button = ui.button(
                 icon='send', 
-                on_click=lambda: send_message()
+                on_click=send_message
             ).props('round dense flat title="send"')
 
     with chat_container:
