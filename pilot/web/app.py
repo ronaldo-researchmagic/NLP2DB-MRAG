@@ -90,7 +90,7 @@ def build_left_drawer(dbs):
             language_labels = {
                 'en': 'English',
                 'pt': 'Português',
-                'zh': '中文'
+
             }
             
             # Create simple list of language codes
@@ -217,7 +217,7 @@ async def main_page(client: Client):
         
         # Área de input fixada na parte inferior
         with ui.row().classes('w-full items-center p-2 bg-white sticky bottom-0 shadow-lg'):
-            text_input = ui.textarea(placeholder=get_lang_text('ask_database_placeholder')).classes('flex-grow')
+            text_input = ui.input(placeholder=get_lang_text('ask_database_placeholder')).classes('flex-grow')
             send_button = ui.button(
                 icon='send', 
                 on_click=lambda: asyncio.create_task(handle_user_message(text_input, chat_container))
@@ -227,7 +227,7 @@ async def main_page(client: Client):
         welcome_messages = {
             "en": "Hello! I'm your TELA-powered SQL assistant. How can I help you today?",
             "pt": "Olá! Sou seu assistente SQL com tecnologia TELA. Como posso ajudá-lo hoje?",
-            "zh": "您好！我是您的TELA驱动的SQL助手。今天我能为您做些什么？"
+
         }
         welcome_message = welcome_messages.get(current_language, welcome_messages["en"])
         ui.chat_message(welcome_message, name='Assistant')
