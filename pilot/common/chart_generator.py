@@ -128,6 +128,9 @@ class ChartGenerator:
         # Get appropriate columns for the chart
         x_col, y_col, color_col = ChartGenerator._select_columns(df, chart_type)
         
+        # Log the selected columns for debugging
+        print(f"DEBUG: Selected columns for chart - x_col: '{x_col}', y_col: '{y_col}', color_col: '{color_col}'")
+        
         # Generate the appropriate chart
         try:
             if chart_type == 'bar':
@@ -155,20 +158,49 @@ class ChartGenerator:
                 )
                 
             elif chart_type == 'line':
-                fig = px.line(
-                    df,
-                    x=x_col,
-                    y=y_col,
-                    color=color_col if color_col else None,
-                    title=f"{y_col} {get_lang_text('chart_over')} {x_col}",
-                    template="plotly_white",
-                    markers=True
-                )
-                fig.update_layout(
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(title=x_col),
-                    yaxis=dict(title=y_col)
-                )
+                # Special handling for year/revenue charts
+                if ('ano' in str(x_col).lower() or 'year' in str(x_col).lower()) and len(df.columns) >= 2:
+                    # For year charts, ensure we're using the correct columns
+                    # The first column should be the year, the second column should be the value
+                    x_col_name = df.columns[0]  # Usually 'ano' or 'year'
+                    y_col_name = df.columns[1]  # Usually 'total_faturamento' or similar
+                    
+                    # Create the line chart with explicit column names
+                    fig = px.line(
+                        df,
+                        x=x_col_name,
+                        y=y_col_name,
+                        color=color_col if color_col else None,
+                        title=f"{y_col_name} {get_lang_text('chart_over')} {x_col_name}",
+                        template="plotly_white",
+                        markers=True
+                    )
+                    
+                    # Explicitly set axis titles
+                    fig.update_layout(
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        xaxis=dict(title=x_col_name),
+                        yaxis=dict(title=y_col_name)
+                    )
+                    
+                    # Debug the selected columns
+                    print(f"DEBUG: Year chart - Using x_col: '{x_col_name}', y_col: '{y_col_name}'")
+                else:
+                    # Standard line chart
+                    fig = px.line(
+                        df,
+                        x=x_col,
+                        y=y_col,
+                        color=color_col if color_col else None,
+                        title=f"{y_col} {get_lang_text('chart_over')} {x_col}",
+                        template="plotly_white",
+                        markers=True
+                    )
+                    fig.update_layout(
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        xaxis=dict(title=x_col),
+                        yaxis=dict(title=y_col)
+                    )
                 
             elif chart_type == 'scatter':
                 fig = px.scatter(
@@ -187,10 +219,19 @@ class ChartGenerator:
             else:
                 return None
                 
+            # Debug the figure data before converting to JSON
+            print(f"DEBUG: Chart layout before JSON conversion: {fig.layout}")
+            print(f"DEBUG: Chart data before JSON conversion: {fig.data}")
+            
             # Convert to JSON for web display
+            fig_json = fig.to_json()
+            
+            # Debug a sample of the JSON output
+            print(f"DEBUG: JSON sample (first 200 chars): {fig_json[:200]}...")
+            
             return {
                 'chart_type': chart_type,
-                'figure': fig.to_json()
+                'figure': fig_json
             }
             
         except Exception as e:
@@ -240,6 +281,19 @@ class ChartGenerator:
             if date_cols and numeric_cols:
                 x_col = date_cols[0]
                 y_col = numeric_cols[0]
+            # Special case for 'ano' (year) column with numeric values
+            elif any(col for col in df.columns if 'ano' in str(col).lower() or 'year' in str(col).lower()) and numeric_cols:
+                # Find the 'ano' or 'year' column
+                year_col = next(col for col in df.columns if 'ano' in str(col).lower() or 'year' in str(col).lower())
+                # Find a numeric column that is not the year column for the y-axis
+                y_candidates = [col for col in numeric_cols if col != year_col]
+                if y_candidates:
+                    x_col = year_col
+                    y_col = y_candidates[0]  # Use the first numeric column that isn't the year
+                else:
+                    # If no other numeric column, use default behavior
+                    x_col = df.columns[0]
+                    y_col = df.columns[1] if len(df.columns) > 1 else df.columns[0]
             elif len(numeric_cols) >= 2:
                 x_col = numeric_cols[0]
                 y_col = numeric_cols[1]

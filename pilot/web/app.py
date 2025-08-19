@@ -297,11 +297,27 @@ def remove_chart_data_div(response: str) -> str:
 def display_chart(chart_data: Dict):
     """Display a Plotly chart from the provided chart data."""
     try:
+        # Log the chart data structure for debugging
+        logger.info(f"Chart data keys: {chart_data.keys()}")
+        if 'data' in chart_data:
+            logger.info(f"Chart data 'data' length: {len(chart_data['data'])}")
+            if chart_data['data']:
+                logger.info(f"First data item keys: {chart_data['data'][0].keys() if isinstance(chart_data['data'][0], dict) else 'not a dict'}")
+        if 'layout' in chart_data:
+            logger.info(f"Chart layout keys: {chart_data['layout'].keys() if isinstance(chart_data['layout'], dict) else 'not a dict'}")
+            if 'xaxis' in chart_data['layout']:
+                logger.info(f"X-axis title: {chart_data['layout']['xaxis'].get('title', 'No title')}")
+            if 'yaxis' in chart_data['layout']:
+                logger.info(f"Y-axis title: {chart_data['layout']['yaxis'].get('title', 'No title')}")
+        
         # Create a card for the chart
         with ui.card().classes('w-full chart-container'):
             ui.label("Chart Visualization").classes('text-lg font-medium')
             # Create a Plotly figure from the JSON data
             fig = go.Figure(**chart_data)
+            # Log the figure structure after creation
+            logger.info(f"Figure data count: {len(fig.data)}")
+            logger.info(f"Figure layout: {fig.layout}")
             # Display the figure
             ui.plotly(fig).classes('w-full h-64')
     except Exception as e:
