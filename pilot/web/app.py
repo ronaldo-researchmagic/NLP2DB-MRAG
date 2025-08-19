@@ -94,7 +94,7 @@ def build_left_drawer(dbs):
             }
             
             # Create simple list of language codes
-            language_options = ['en', 'pt', 'zh']
+            language_options = ['en', 'pt']
             
             # Use the language code directly as the value
             session['language_selector'] = ui.select(
