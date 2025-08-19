@@ -210,11 +210,14 @@ async def main_page(client: Client):
     
     build_left_drawer(dbs)
 
-    with ui.column().classes('w-full h-screen justify-between p-4'):
-        chat_container = ui.column().classes('w-full flex-grow overflow-y-auto')
+    # Estrutura principal com layout fixo
+    with ui.column().classes('w-full h-screen flex flex-col'):
+        # Área de chat com scroll
+        chat_container = ui.column().classes('w-full flex-grow overflow-y-auto p-4')
         
-        with ui.row().classes('w-full items-center p-2 bg-white'):
-            text_input = ui.textarea(placeholder='Ask your database a question...').classes('flex-grow')
+        # Área de input fixada na parte inferior
+        with ui.row().classes('w-full items-center p-2 bg-white sticky bottom-0 shadow-lg'):
+            text_input = ui.textarea(placeholder=get_lang_text('ask_database_placeholder')).classes('flex-grow')
             send_button = ui.button(
                 icon='send', 
                 on_click=lambda: asyncio.create_task(handle_user_message(text_input, chat_container))
