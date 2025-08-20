@@ -42,6 +42,7 @@ lang_dicts = {
         "chart_distribution": "Distribuição de",
         "chart_over": "ao longo do",
         "chart_vs": "versus",
+        "chart_explanation_label": "Explicação do gráfico:",
         "ask_database_placeholder": "Faça uma pergunta ao seu banco de dados...",
     },
     "zh": {
@@ -85,6 +86,7 @@ lang_dicts = {
         "chart_distribution": "分布",
         "chart_over": "随时间",
         "chart_vs": "对比",
+        "chart_explanation_label": "图表说明:",
         "ask_database_placeholder": "请向您的数据库提问...",
     },
     "en": {
@@ -128,6 +130,7 @@ lang_dicts = {
         "chart_distribution": "Distribution of",
         "chart_over": "Over",
         "chart_vs": "vs",
+        "chart_explanation_label": "Chart explanation:",
         "ask_database_placeholder": "Ask your database a question...",
     },
 }
