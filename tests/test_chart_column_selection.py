@@ -146,5 +146,35 @@ class TestChartGenerationWithLLM(unittest.TestCase):
         self.assertEqual(chart_config['color'], 'loja')
         self.assertEqual(chart_config['type'], 'bar')
 
+    def test_no_chart_for_empty_dataframe(self):
+        """Testa que nenhum gráfico é gerado para um DataFrame vazio."""
+        df = pd.DataFrame({'A': []})
+        chart_data = run_async_test(ChartGenerator.generate_chart(df, test_mode=True))
+        self.assertIsNone(chart_data)
+        self.mock_print.assert_called_with("DataFrame vazio ou com poucos dados para gerar um gráfico.")
+
+    def test_no_chart_for_single_row(self):
+        """Testa que nenhum gráfico é gerado para um DataFrame com uma única linha."""
+        df = pd.DataFrame({'A': [1], 'B': [2]})
+        chart_data = run_async_test(ChartGenerator.generate_chart(df, test_mode=True))
+        self.assertIsNone(chart_data)
+        self.mock_print.assert_called_with("DataFrame vazio ou com poucos dados para gerar um gráfico.")
+
+    @patch('pilot.common.chart_generator.ChartGenerator._get_semantic_types', new_callable=AsyncMock)
+    def test_no_chart_for_no_variation(self, mock_get_types):
+        """Testa que nenhum gráfico é gerado quando não há variação nos dados quantitativos."""
+        df = pd.DataFrame({
+            'produto': ['A', 'B', 'C'],
+            'faturamento': [1000, 1000, 1000]
+        })
+        mock_get_types.return_value = {
+            'produto': 'categorical',
+            'faturamento': 'quantitative'
+        }
+        chart_data = run_async_test(ChartGenerator.generate_chart(df, test_mode=True))
+        self.assertIsNone(chart_data)
+        self.mock_print.assert_called_with("Gráfico não gerado por falta de variação nos dados da coluna 'faturamento'.")
+
+
 if __name__ == '__main__':
     unittest.main()
