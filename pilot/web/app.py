@@ -213,12 +213,13 @@ async def main_page(client: Client):
     # Estrutura principal com layout fixo
     with ui.column().classes('w-full h-screen flex flex-col'):
         # Área de chat com scroll
-        chat_container = ui.column().classes('w-full flex-grow overflow-y-auto p-4')
+        chat_container = ui.column().classes('w-full flex-grow overflow-y-auto p-2 pb-16')
         
         # Input container that will remain fixed at the bottom
-        with ui.row().classes('w-full items-center p-2 bg-white sticky bottom-0 shadow-lg') as input_row:
-            # Create the input field
-            text_input = ui.input(placeholder=get_lang_text('ask_database_placeholder')).classes('flex-grow')
+        # Usando position fixed para evitar deslocamento causado pela barra de rolagem
+        with ui.row().classes('w-full items-center p-1 bg-white fixed bottom-0 left-0 right-0 shadow-lg min-h-[40px]').style('z-index: 9999;') as input_row:
+            # Create the input field with improved visibility
+            text_input = ui.input(placeholder=get_lang_text('ask_database_placeholder')).props('id=chat-input').classes('flex-grow text-lg py-1').style('min-height: 32px; display: block !important; visibility: visible !important; opacity: 1 !important;')
             
             # Function to process message sending
             def send_message():
@@ -246,11 +247,12 @@ async def main_page(client: Client):
             </script>
             """)
             
-            # Create send button
+            # Create send button with improved visibility
             send_button = ui.button(
+                'Enviar',
                 icon='send', 
                 on_click=send_message
-            ).props('round dense flat title="send"')
+            ).props('round dense title="send"').classes('bg-primary text-white ml-2').style('min-height: 32px; min-width: 80px;')
 
     with chat_container:
         welcome_messages = {
