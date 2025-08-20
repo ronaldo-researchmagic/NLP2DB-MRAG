@@ -46,10 +46,18 @@ async def test_year_detection():
         # Verificar se os anos estão sendo exibidos corretamente no eixo X
         fig_data = json.loads(chart_result['figure'])
         if 'data' in fig_data and len(fig_data['data']) > 0:
-            x_values = fig_data['data'][0].get('x', [])
+            x_values = fig_data['data'][0].get('x', {})
             print(f"Valores do eixo X no gráfico: {x_values}")
-            print(f"Tipo dos valores do eixo X: {type(x_values[0]) if x_values else 'N/A'}")
-            print(f"Os anos estão sendo tratados como categorias? {'Sim' if isinstance(x_values[0], str) else 'Não'}")
+            
+            # Verificar o formato dos dados do eixo X
+            if isinstance(x_values, dict) and 'dtype' in x_values:
+                print(f"Formato dos dados do eixo X: {x_values['dtype']}")
+                print("Os anos estão em formato binário comprimido, não é possível verificar diretamente")
+            elif isinstance(x_values, list) and len(x_values) > 0:
+                print(f"Tipo dos valores do eixo X: {type(x_values[0])}")
+                print(f"Os anos estão sendo tratados como categorias? {'Sim' if isinstance(x_values[0], str) else 'Não'}")
+            else:
+                print("Formato de dados do eixo X não reconhecido ou vazio")
     else:
         print("Falha na geração do gráfico")
 

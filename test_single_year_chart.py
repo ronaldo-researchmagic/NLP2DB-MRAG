@@ -68,22 +68,31 @@ async def test_single_year_chart():
         chart_type = figure_data['data'][0].get('type', 'desconhecido')
         print(f"Tipo de traço no gráfico: {chart_type}")
         
-        # Obter valores dos eixos X e Y
+        # Verificar o tipo de gráfico
+        if 'type' in figure_data['data'][0]:
+            chart_type = figure_data['data'][0]['type']
+            print(f"Tipo de gráfico: {chart_type}")
+        
+        # Verificar informações sobre os eixos X e Y
         if 'x' in figure_data['data'][0]:
-            x_values = figure_data['data'][0]['x']
-            print(f"Valores no eixo X (primeiros 3): {x_values[:3]}")
-            print(f"Total de valores no eixo X: {len(x_values)}")
+            x_data = figure_data['data'][0]['x']
+            if isinstance(x_data, dict) and 'bdata' in x_data:
+                print(f"X contém dados binários codificados: {x_data}")
+            elif isinstance(x_data, list):
+                print(f"Valores no eixo X (amostra): {x_data[:3] if len(x_data) > 3 else x_data}")
+                print(f"Total de valores no eixo X: {len(x_data)}")
+            else:
+                print(f"Formato de dados X: {type(x_data)}")
             
         if 'y' in figure_data['data'][0]:
-            # Verificar se y é um dicionário (dados binários) ou uma lista
             y_data = figure_data['data'][0]['y']
             if isinstance(y_data, dict) and 'bdata' in y_data:
-                print("Y contém dados binários codificados")
+                print(f"Y contém dados binários codificados: {y_data}")
             elif isinstance(y_data, list):
-                print(f"Valores no eixo Y (primeiros 3): {y_data[:3]}")
+                print(f"Valores no eixo Y (amostra): {y_data[:3] if len(y_data) > 3 else y_data}")
                 print(f"Total de valores no eixo Y: {len(y_data)}")
             else:
-                print(f"Formato de dados Y desconhecido: {type(y_data)}")
+                print(f"Formato de dados Y: {type(y_data)}")
         
         # Verificar template de hover para identificar quais colunas estão sendo usadas
         if 'hovertemplate' in figure_data['data'][0]:

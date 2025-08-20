@@ -62,15 +62,40 @@ async def test_year_chart():
             f.write(chart_result['figure'])
         print("JSON do gráfico salvo em 'year_chart_test_result.json'")
         
-        # Verificar se a coluna 'ano' foi convertida para categoria
-        print("\nVerificando se a detecção de tipos funcionou:")
-        # Extrair informações do JSON para verificar se os anos estão como categorias
+        # Verificar se o gráfico foi gerado corretamente
+        print("\nVerificando o gráfico gerado:")
         fig_data = json.loads(chart_result['figure'])
+        
+        # Verificar o tipo de gráfico
         if 'data' in fig_data and len(fig_data['data']) > 0:
-            x_values = fig_data['data'][0].get('x', [])
-            print(f"Valores do eixo X no gráfico: {x_values[:5]}...")
-            print(f"Tipo dos valores do eixo X: {type(x_values[0]) if x_values else 'N/A'}")
-            print(f"Os anos estão sendo tratados como categorias? {'Sim' if isinstance(x_values[0], str) else 'Não'}")
+            chart_type = fig_data['data'][0].get('type', 'desconhecido')
+            print(f"Tipo de gráfico: {chart_type}")
+            
+            # Verificar títulos dos eixos
+            if 'layout' in fig_data:
+                layout = fig_data['layout']
+                x_title = layout.get('xaxis', {}).get('title', {}).get('text', 'N/A')
+                y_title = layout.get('yaxis', {}).get('title', {}).get('text', 'N/A')
+                print(f"Título do eixo X: {x_title}")
+                print(f"Título do eixo Y: {y_title}")
+                
+                # Verificar se os eixos estão corretos
+                x_correto = x_title == 'Ano'
+                y_correto = y_title == 'Faturamento Total'
+                print(f"Eixo X correto? {'Sim' if x_correto else 'Não'}")
+                print(f"Eixo Y correto? {'Sim' if y_correto else 'Não'}")
+                
+                # Verificar rotação do eixo X
+                x_rotation = layout.get('xaxis', {}).get('tickangle', 0)
+                print(f"Rotação do eixo X: {x_rotation} graus")
+                
+                # Verificar se o gráfico tem título
+                title = layout.get('title', {}).get('text', 'N/A')
+                print(f"Título do gráfico: {title}")
+            else:
+                print("Não foi possível encontrar informações de layout no gráfico")
+        else:
+            print("Não foi possível encontrar dados no gráfico")
     else:
         print("Falha na geração do gráfico")
 

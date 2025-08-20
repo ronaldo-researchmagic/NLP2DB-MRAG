@@ -319,11 +319,27 @@ def display_chart(chart_data: Dict):
         # Create a card for the chart
         with ui.card().classes('w-full chart-container'):
             ui.label("Chart Visualization").classes('text-lg font-medium')
+            
+            # Verificar se há dados no gráfico
+            if 'data' in chart_data and chart_data['data']:
+                # Verificar se há uma coluna de faturamento nos dados
+                faturamento_col = None
+                for trace in chart_data['data']:
+                    if isinstance(trace, dict) and 'y' in trace:
+                        # Verificar se o nome do eixo Y contém termos de faturamento
+                        y_name = trace.get('name', '')
+                        if any(term in y_name.lower() for term in ['faturamento', 'total', 'valor', 'venda', 'revenue', 'sales']):
+                            faturamento_col = trace
+                            logger.info(f"Found faturamento column in chart data: {y_name}")
+                            break
+            
             # Create a Plotly figure from the JSON data
             fig = go.Figure(**chart_data)
+            
             # Log the figure structure after creation
             logger.info(f"Figure data count: {len(fig.data)}")
             logger.info(f"Figure layout: {fig.layout}")
+            
             # Display the figure
             ui.plotly(fig).classes('w-full h-64')
     except Exception as e:

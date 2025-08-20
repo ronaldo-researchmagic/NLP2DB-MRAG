@@ -199,15 +199,17 @@ Quando uma coluna temporal (como 'ano') contém apenas um valor único, o sistem
 
 1. **Detecção de valor único**: Verifica se a coluna temporal tem apenas um valor único (ex: todos os dados são do mesmo ano)
 2. **Substituição automática**: Ao invés de usar essa coluna temporal no eixo X (o que seria inútil), o sistema seleciona automaticamente uma coluna categórica alternativa
-3. **Logging de decisão**: O sistema registra essa decisão para fins de depuração: `Temporal column 'ano' has only one unique value. Not using as X axis.`
+3. **Verificação de valores distintos**: Garante que a coluna categórica selecionada tenha mais de um valor distinto para criar um gráfico significativo
+4. **Logging detalhado**: O sistema registra essa decisão e o processo de seleção para fins de depuração: `Temporal column 'ano' has only one unique value (2023). Using categorical column 'categoria' with 4 unique values for X axis instead.`
 
 ### Priorização de Colunas de Faturamento para o Eixo Y
 
 O sistema prioriza automaticamente colunas que representam valores de faturamento, vendas ou totais para o eixo Y:
 
-1. **Detecção de colunas prioritárias**: Identifica colunas com termos como 'faturamento', 'total', 'valor', 'venda', 'revenue', 'sales' em seus nomes
+1. **Detecção de colunas prioritárias**: Identifica colunas com termos como 'faturamento', 'total', 'valor', 'venda', 'revenue', 'sales', 'amount', 'sum' em seus nomes (ampliada para incluir mais termos em inglês e português)
 2. **Substituição da recomendação do LLM**: Mesmo que o LLM recomende outra coluna para o eixo Y, o sistema substitui pela coluna prioritária
-3. **Logging de priorização**: O sistema registra essa priorização: `Prioritizing 'faturamento_total' column for Y axis (faturamento/total/valor)`
+3. **Priorização garantida**: A priorização é aplicada em todos os fluxos de decisão, garantindo que colunas de faturamento sempre sejam usadas para o eixo Y quando disponíveis
+4. **Logging detalhado**: O sistema registra essa priorização com informações sobre o processo de decisão: `Prioritizing 'faturamento_total' column for Y axis over LLM recommendation 'quantidade' (matched priority term: faturamento)`
 
 ### Seleção Automática de Colunas Numéricas para o Eixo Y
 
@@ -262,13 +264,14 @@ def _select_columns(df, chart_type):
     
     logging.debug(f"Temporal columns: {temporal_cols}")
     
-    # Procurar coluna prioritária para eixo Y (faturamento, total, valor)
+    # Procurar coluna prioritária para eixo Y (faturamento, total, valor, etc.)
     priority_y_col = None
-    priority_terms = ['faturamento', 'total', 'valor', 'venda', 'revenue', 'sales']
+    priority_terms = ['faturamento', 'total', 'valor', 'venda', 'revenue', 'sales', 'amount', 'sum', 'valor', 'price']
     for col in numeric_cols:
         if any(term in str(col).lower() for term in priority_terms):
             priority_y_col = col
-            logging.debug(f"Found priority column for Y axis: '{priority_y_col}'")
+            matched_term = next(term for term in priority_terms if term in str(col).lower())
+            logging.debug(f"Found priority column for Y axis: '{priority_y_col}' (matched term: {matched_term})")
             break
     
     # Priorizar coluna temporal para eixo X, mas verificar se tem mais de um valor único
@@ -329,6 +332,35 @@ def _select_columns(df, chart_type):
     return x_col, y_col, color_col
 ```
 
+## Melhorias Recentes
+
+### Detecção Aprimorada de Colunas Temporais com Valor Único
+
+Implementamos melhorias significativas na detecção e tratamento de colunas temporais com valor único:
+
+1. **Detecção mais precisa**: O sistema agora verifica explicitamente o número de valores únicos em colunas temporais
+2. **Logs detalhados**: Adicionamos logs detalhados que mostram o número exato de valores únicos encontrados
+3. **Seleção inteligente de alternativas**: Quando uma coluna temporal tem valor único, o sistema seleciona a melhor coluna categórica alternativa, verificando também se esta tem múltiplos valores distintos
+4. **Tratamento recursivo**: Se a coluna categórica selecionada também tiver apenas um valor único, o sistema continua procurando até encontrar uma coluna adequada
+
+### Priorização Ampliada de Colunas de Faturamento
+
+Melhoramos a priorização de colunas para o eixo Y:
+
+1. **Lista expandida de termos**: Adicionamos mais termos em inglês e português para identificar colunas de faturamento ('amount', 'sum', 'price', etc.)
+2. **Priorização garantida em todos os fluxos**: Garantimos que a priorização seja aplicada em todos os caminhos de decisão do algoritmo
+3. **Logs mais informativos**: Os logs agora mostram qual termo específico foi correspondido durante a priorização
+4. **Sobrescrita de recomendações do LLM**: Reforçamos a lógica que garante que colunas de faturamento sejam priorizadas mesmo quando o LLM recomenda outras colunas
+
+### Testes Automatizados Abrangentes
+
+Implementamos testes automatizados para validar a lógica de seleção de colunas:
+
+1. **Teste de priorização de faturamento**: Verifica se colunas de faturamento são sempre priorizadas para o eixo Y
+2. **Teste de sobrescrita de recomendações do LLM**: Valida que a priorização de faturamento funciona mesmo quando o LLM recomenda outras colunas
+3. **Teste de tratamento de colunas temporais com valor único**: Confirma que o sistema seleciona corretamente colunas categóricas quando colunas temporais têm valor único
+4. **Teste de múltiplas colunas categóricas**: Verifica a seleção correta quando há várias opções de colunas categóricas disponíveis
+
 ## Considerações Futuras
 
 - Expandir as regras heurísticas para outros tipos de dados temporais (meses, trimestres)
@@ -341,3 +373,4 @@ def _select_columns(df, chart_type):
 - Implementar detecção automática de outliers para melhorar a escala dos gráficos
 - Adicionar suporte para formatação condicional baseada no tipo de dado e idioma
 - Implementar detecção automática de tendências e pontos de interesse nos dados
+- Adicionar suporte para recomendações de gráficos baseadas em análise estatística dos dados

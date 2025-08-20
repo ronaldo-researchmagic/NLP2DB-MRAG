@@ -75,8 +75,8 @@ class DbChatOutputParser(BaseOutputParser):
             chart_result = await ChartGenerator.generate_chart(df, sql_query=sql_query, test_mode=test_mode)
             if chart_result:
                 chart_json = chart_result['figure']
-                chart_type = chart_result['chart_type']
-                chart_explanation = chart_result.get('llm_explanation', '')
+                chart_type = chart_result['chart_config']['type']
+                chart_explanation = chart_result.get('explanation', '')
                 print(f"DEBUG: Chart generated successfully with type: {chart_type}")
                 if chart_explanation:
                     print(f"DEBUG: Chart explanation: {chart_explanation[:100]}...")
@@ -101,15 +101,27 @@ class DbChatOutputParser(BaseOutputParser):
         chart_div = ""
         chart_explanation_div = ""
         if chart_json:
-            # Escape single quotes in JSON to prevent HTML attribute issues
+            # Converter o objeto Figure para JSON e depois escapar
             import html as html_module
-            safe_chart_json = html_module.escape(chart_json)
-            print(f"DEBUG: Adding chart div with JSON data (length: {len(safe_chart_json)})")
-            chart_div = f"<div id='chart-data' style='display:none;' data-chart='{safe_chart_json}'></div>"
+            import json
+            
+            # Converter Figure para JSON usando o método to_json() do Plotly
+            try:
+                chart_json_str = chart_json.to_json()
+                safe_chart_json = html_module.escape(chart_json_str)
+                print(f"DEBUG: Adding chart div with JSON data (length: {len(safe_chart_json) if safe_chart_json else 0})")
+                chart_div = f"<div id='chart-data' style='display:none;' data-chart='{safe_chart_json}'></div>"
+            except Exception as e:
+                print(f"DEBUG: Error converting chart to JSON: {str(e)}")
+                chart_div = "<div class='chart-error'>Erro ao processar o gráfico</div>"
             
             # Adicionar explicação do LLM sobre o gráfico, se disponível
             if chart_explanation:
-                chart_explanation_div = f"<div class='chart-explanation'><strong>{get_lang_text('chart_explanation_label', 'Explicação do gráfico:')}</strong><br>{chart_explanation}</div>"
+                # Usar apenas a chave para get_lang_text ou usar o valor padrão diretamente
+                explanation_label = get_lang_text('chart_explanation_label')
+                if explanation_label == 'chart_explanation_label':  # Se não foi traduzido
+                    explanation_label = 'Explicação do gráfico:'
+                chart_explanation_div = f"<div class='chart-explanation'><strong>{explanation_label}</strong><br>{chart_explanation}</div>"
         
         # Combine all elements into the final view text
         html_content = html.replace("\n", " ")
