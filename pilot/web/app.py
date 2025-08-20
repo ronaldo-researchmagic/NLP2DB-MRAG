@@ -76,8 +76,11 @@ def get_dbs():
 # --- UI Components ---
 def build_header():
     with ui.header(elevated=True).classes('justify-between items-center px-4 bg-primary text-white'):
-        ui.label('DB-GPT TELA Edition').classes('text-2xl font-bold')
-        ui.label('Advanced NLP-to-SQL Assistant')
+        with ui.row().classes('items-center'):
+            ui.image('/assets/logo.png').style('height: 2rem; width: auto; margin-right: 1rem;')
+            with ui.column().classes('gap-0'):
+                ui.label('Fabric Data').classes('text-2xl font-bold leading-tight')
+                ui.label('Advanced NLP-to-SQL Assistant').classes('text-xs')
 
 def build_left_drawer(dbs):
     with ui.left_drawer().classes('bg-gray-100 p-4') as left_drawer:
@@ -353,8 +356,14 @@ def main():
     initialize_app()
     logger.info("Prompt templates loaded successfully")
     
+    import os
+
+    # Absolute path to the assets directory
+    assets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets')
+    app.add_static_files('/assets', assets_path)
+
     ui.run(
-        title="DB-GPT TELA Edition",
+        title="Fabric Data",
         host="0.0.0.0",
         port=CFG.WEB_SERVER_PORT,
         storage_secret="a_very_secret_key_for_nicegui_sessions",
