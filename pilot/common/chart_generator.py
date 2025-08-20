@@ -120,7 +120,11 @@ class ChartGenerator:
         try:
             # Passa as Series do pandas com os dtypes corretos diretamente para o Plotly
             # Isso evita modificar o DataFrame e previne o "tidying" automático do Plotly
-            x_data = df[x_col].astype(str) if semantic_types.get(x_col) == 'temporal' else df[x_col]
+            if semantic_types.get(x_col) == 'temporal' or semantic_types.get(x_col) == 'categorical' or x_col.contains('_cod'):
+                x_data = df[x_col].astype(str)
+            else:
+                x_data = df[x_col]
+
             y_data = df[y_col].astype(float)
 
             plot_args = {
