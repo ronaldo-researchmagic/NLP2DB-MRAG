@@ -22,8 +22,8 @@ _DEFAULT_TEMPLATE = f"""
 """
 
 PROMPT_SUFFIX = f"""{get_prompt_template("sql_tables_prefix")}
-{{table_info}}
-
+You need to query the table named `{{table_info}}` for information.
+If a query requires columns from multiple tables, you must use a JOIN statement and use the FOREIGN KEY RELATIONSHIPS provided to determine the join conditions.
 {get_prompt_template("sql_question_prefix")} {{input}}
 
 """

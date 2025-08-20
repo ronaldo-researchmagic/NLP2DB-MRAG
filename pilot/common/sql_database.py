@@ -64,16 +64,17 @@ class Database:
         self._db_sessions = Session
 
         self._all_tables = set()
-        self.view_support = False
-        self._usable_tables = set()
-        self._include_tables = set()
-        self._ignore_tables = set()
-        self._custom_table_info = set()
-        self._indexes_in_table_info = set()
-        self._usable_tables = set()
-        self._usable_tables = set()
-        self._sample_rows_in_table_info = set()
+        self.view_support = view_support
+        self._metadata = MetaData()
+        self._ignore_tables = set(ignore_tables) if ignore_tables else set()
+        self._include_tables = set(include_tables) if include_tables else set()
+        self._sample_rows_in_table_info = sample_rows_in_table_info
         self._indexes_in_table_info = indexes_in_table_info
+        self._custom_table_info = custom_table_info or {}
+
+        # Initialize _all_tables and _usable_tables
+        self._all_tables = self._get_all_table_names()
+        self._usable_tables = self.get_usable_table_names()
 
     @classmethod
     def from_uri(
@@ -116,73 +117,44 @@ class Database:
         result = cursor.fetchone()[0]
         return result
 
+    def _get_all_table_names(self) -> set:
+        """Get all table names in the database."""
+        all_schemas = self._inspector.get_schema_names()
+        all_tables = set()
+        for schema in all_schemas:
+            if schema in ('information_schema', 'pg_catalog', 'performance_schema', 'sys', 'mysql'):
+                continue
+            try:
+                tables = self._inspector.get_table_names(schema=schema)
+                all_tables.update(tables)
+                if self.view_support:
+                    views = self._inspector.get_view_names(schema=schema)
+                    all_tables.update(views)
+            except Exception as e:
+                logger.warning(f"Could not get tables for schema {schema}: {e}")
+        return all_tables
+
     def get_session(self, db_name: str):
         session = self._db_sessions()
+        schema_to_set = db_name
 
-        self._metadata = MetaData()
-        
-        # Tratar caso especial para PostgreSQL quando o db_name é 'main'
         if 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
-            # No PostgreSQL, 'main' não existe como esquema, usar 'public' em seu lugar
-            if db_name == 'main':
-                schema_name = 'public'
-            else:
-                schema_name = db_name
-                
+            if db_name == 'main' or not db_name:
+                schema_to_set = 'public'
             try:
-                # Verificar se o esquema existe
-                check_schema = text("""
-                    SELECT schema_name 
-                    FROM information_schema.schemata 
-                    WHERE schema_name = :schema_name
-                """)
-                result = session.execute(check_schema, {"schema_name": schema_name}).fetchone()
-                
-                # Se o esquema não existir, usar 'public'
-                if not result:
-                    logger.warning(f"Esquema '{schema_name}' não encontrado, usando 'public'")
-                    schema_name = 'public'
-                    
-                # Definir o search_path
-                sql = text(f"SET search_path TO {schema_name}")
-                session.execute(sql)
+                session.execute(text(f"SET search_path TO {schema_to_set}"))
             except Exception as e:
-                logger.error(f"Erro ao configurar search_path: {e}")
-                # Em caso de erro, tentar usar 'public'
-                try:
-                    session.rollback()  # Importante para limpar qualquer transação com erro
-                    sql = text("SET search_path TO public")
-                    session.execute(sql)
-                except Exception as inner_e:
-                    logger.error(f"Erro ao usar esquema 'public': {inner_e}")
-        elif 'sqlite' in self._engine.name.lower():
-            # SQLite não precisa de seleção de banco de dados
-            pass
-        elif 'postgresql' in self._engine.name.lower() or 'postgres' in self._engine.name.lower():
-            # PostgreSQL usa SET search_path em vez de USE
-            sql = text(f"SET search_path TO {db_name}")
-            session.execute(sql)
-        else:
-            # MySQL e outros
-            sql = text(f"use `{db_name}`")
-            session.execute(sql)
-            
-        return session 
+                logger.error(f"Error setting search_path to {schema_to_set}: {e}")
+                session.rollback()
+        elif 'mysql' in self._engine.name.lower():
+            try:
+                session.execute(text(f"USE `{db_name}`"))
+            except Exception as e:
+                logger.error(f"Error using database {db_name}: {e}")
+                session.rollback()
 
-        # 处理表信息数据
-
-        self._metadata.reflect(bind=self._engine, schema=db_name)
-
-        # including view support by adding the views as well as tables to the all
-        # tables list if view_support is True
-        self._all_tables = set(
-            self._inspector.get_table_names(schema=db_name)
-            + (
-                self._inspector.get_view_names(schema=db_name)
-                if self.view_support
-                else []
-            )
-        )
+        # Reflect metadata for all usable tables
+        self._metadata.reflect(bind=self._engine, only=list(self._usable_tables))
 
         return session
 
@@ -310,6 +282,46 @@ class Database:
         indexes = self._inspector.get_indexes(table.name)
         indexes_formatted = "\n".join(map(_format_index, indexes))
         return f"Table Indexes:\n{indexes_formatted}"
+
+    def get_table_info_with_foreign_keys(self, session):
+        """Gets table schema information and foreign key relationships."""
+        # Get basic table info (name and columns)
+        table_info_tuples = self.table_simple_info(session)
+        table_info_str = "\n".join([f"{name}{columns}" for name, columns in table_info_tuples])
+
+        # Get foreign key info
+        all_foreign_keys = self._get_all_foreign_keys(session)
+        
+        if all_foreign_keys:
+            fk_info_str = "\nFOREIGN KEY RELATIONSHIPS:\n" + "\n".join(all_foreign_keys)
+            return table_info_str + fk_info_str
+        
+        return table_info_str
+
+    def _get_all_foreign_keys(self, session):
+        """Retrieves all foreign key relationships in the current database/schema."""
+        all_fks = []
+        all_schemas = self._inspector.get_schema_names()
+
+        for schema in all_schemas:
+            # Ignore system schemas
+            if schema.startswith('pg_') or schema in ['information_schema', 'mysql', 'sys', 'performance_schema']:
+                continue
+
+            for table_name in self._inspector.get_table_names(schema=schema):
+                try:
+                    fks = self._inspector.get_foreign_keys(table_name, schema=schema)
+                    for fk in fks:
+                        constrained_columns = fk['constrained_columns']
+                        referred_table = fk['referred_table']
+                        referred_columns = fk['referred_columns']
+                        
+                        fk_info = f"{schema}.{table_name}({', '.join(constrained_columns)}) -> {schema}.{referred_table}({', '.join(referred_columns)})"
+                        all_fks.append(fk_info)
+                except Exception as e:
+                    logger.warning(f"Could not get foreign keys for table {schema}.{table_name}: {e}")
+                
+        return all_fks
 
     def get_table_info_no_throw(self, table_names: Optional[List[str]] = None) -> str:
         """Get information about specified tables."""

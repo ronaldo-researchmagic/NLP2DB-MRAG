@@ -30,9 +30,8 @@ class ChatWithDbAutoExecute(BaseChat):
         # The original implementation fetched table info here.
         # This is still a valid approach for providing context to the LLM.
         try:
-            table_info_tuples = self.database.table_simple_info(self.db_connect)
-            # Format for better readability in the prompt
-            table_info = "\n".join([f"{name}{columns}" for name, columns in table_info_tuples])
+            # Use the new method to get schema and foreign key info
+            table_info = self.database.get_table_info_with_foreign_keys(self.db_connect)
         except Exception as e:
             print(f"Error getting table info: {e}")
             table_info = "Error retrieving database schema."
